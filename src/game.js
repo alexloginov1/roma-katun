@@ -7,6 +7,7 @@ import {loadKatun,prepareKatun,photoWeight,photoScene,drawPhotoBackdrop,drawCont
 import {prepareEnvironment,drawEnvironment} from './natural-environment.js';
 import {drawOriginalBackground} from './original-background.js';
 import {drawCap,mouthPoint,drawPickupHead} from './hat-story.js';
+import {setupTouchUI} from './touch-controls.js';
 const canvas=document.querySelector('canvas'),g=canvas.getContext('2d');
 const overlay=document.querySelector('#overlay'),button=document.querySelector('#start'),message=document.querySelector('#message');
 const sprite=new Image(),owner=new Image(),ownerRaised=new Image();
@@ -21,33 +22,39 @@ let p=createPlayer(),animation=createAnimation(),mode='title',resumeMode='play';
 let collected=false,checked=false,pickup=null,delivery=0,delivered=false;
 let cam=0,t=0,acc=0,last=0,photoEnabled=true,photoMix=1,jump=false;
 let muted=false,audioContext,notice='',noticeTime=0;
-const keys=new Set();
+const keys=new Set(),touchKeys=new Set();let touchUI;
+const held=code=>keys.has(code)||touchKeys.has(code);
+function resetInput(){keys.clear();touchKeys.clear();jump=false;touchUI?.reset();}
+function nearHat(){return !collected&&!pickup&&Math.abs(p.x+34-hat.x)<95&&Math.abs(p.y+64-hat.y)<90;}
+function takeHat(){if(nearHat()){if(p.grounded&&Math.abs(p.vx)<30)pickup={time:0,x:p.x};else say('Остановись на камне и возьми кепку');}}
 function sound(kind){if(muted)return;try{audioContext??=new AudioContext();audioContext.resume();const o=audioContext.createOscillator(),a=audioContext.createGain();o.connect(a);a.connect(audioContext.destination);const f={jump:330,land:110,hat:740,flag:520}[kind];o.frequency.setValueAtTime(f,audioContext.currentTime);o.frequency.exponentialRampToValueAtTime(f*.65,audioContext.currentTime+.12);a.gain.setValueAtTime(.045,audioContext.currentTime);a.gain.exponentialRampToValueAtTime(.001,audioContext.currentTime+.18);o.start();o.stop(audioContext.currentTime+.2);}catch{}}
 document.querySelector('#sound').onclick=()=>{muted=!muted;document.querySelector('#sound').textContent=`Звук: ${muted?'выкл.':'вкл.'}`;};
 document.querySelector('#scenery').onclick=()=>{photoEnabled=!photoEnabled;document.querySelector('#scenery').textContent=photoEnabled?'Фотофон':'Исходный фон';};
 function say(s){notice=s;noticeTime=3;}
-function respawn(){p=createPlayer(checked?checkpoint.x:140,496);animation=createAnimation();pickup=null;cam=Math.max(0,Math.min(C.world-1280,p.x-380));keys.clear();jump=false;}
+function respawn(){p=createPlayer(checked?checkpoint.x:140,496);animation=createAnimation();pickup=null;cam=Math.max(0,Math.min(C.world-1280,p.x-380));resetInput();}
 function show(title,text,label){overlay.hidden=false;overlay.querySelector('h1').textContent=title;message.textContent=text;button.textContent=label;}
-function pause(){if(mode==='play'||mode==='delivery'){resumeMode=mode;mode='pause';keys.clear();jump=false;show('Тихая пауза','Рома подождёт. Прогресс сохранён.','Продолжить');}}
-button.onclick=()=>{if(mode==='pause')mode=resumeMode;else{collected=false;checked=false;delivered=false;pickup=null;delivery=0;respawn();mode='play';t=0;noticeTime=0;}acc=0;overlay.hidden=true;sound('flag');};
+function pause(){resetInput();if(mode==='play'||mode==='delivery'){resumeMode=mode;mode='pause';show('Тихая пауза','Рома подождёт. Прогресс сохранён.','Продолжить');}}
+button.onclick=()=>{resetInput();if(mode==='pause')mode=resumeMode;else{collected=false;checked=false;delivered=false;pickup=null;delivery=0;respawn();mode='play';t=0;noticeTime=0;}acc=0;overlay.hidden=true;sound('flag');};
+const touchCodes={left:'ArrowLeft',right:'ArrowRight',jump:'Space'};
+touchUI=setupTouchUI({canPlay:()=>mode==='play',onReset:resetInput,onPause:pause,onCheckpoint:()=>{if(mode==='pause'){respawn();mode='play';acc=0;overlay.hidden=true;}},onPress:action=>{if(mode!=='play')return;if(action==='take'){takeHat();return;}const code=touchCodes[action],wasHeld=held(code);touchKeys.add(code);if(action==='jump'&&!wasHeld)jump=true;},onRelease:action=>touchKeys.delete(touchCodes[action])});
 const codes=['KeyA','KeyD','ArrowLeft','ArrowRight','Space','KeyE','KeyR','Escape'];
 addEventListener('keydown',e=>{
  if(!codes.includes(e.code))return;e.preventDefault();if(e.repeat)return;
  if(e.code==='Escape'){if(mode==='play'||mode==='delivery')pause();else if(mode==='pause')button.click();return;}
  if(mode!=='play')return;keys.add(e.code);if(e.code==='Space')jump=true;if(e.code==='KeyR')respawn();
- if(e.code==='KeyE'&&!collected&&!pickup&&Math.abs(p.x+34-hat.x)<95&&Math.abs(p.y+64-hat.y)<90){if(p.grounded&&Math.abs(p.vx)<30)pickup={time:0,x:p.x};else say('Остановись на камне и нажми E');}
+ if(e.code==='KeyE')takeHat();
 });
 addEventListener('keyup',e=>{keys.delete(e.code);if(codes.includes(e.code))e.preventDefault();});
 addEventListener('blur',pause);document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
-function win(){mode='win';keys.clear();show(collected?'Рома принёс кепку!':'Рома вернулся! А кепка осталась на тропе',`Кепка: ${collected?'1/1 — передана хозяину':'0/1'}. Время прогулки: ${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,'0')}.`,'Пройти ещё раз');}
+function win(){mode='win';resetInput();show(collected?'Рома принёс кепку!':'Рома вернулся! А кепка осталась на тропе',`Кепка: ${collected?'1/1 — передана хозяину':'0/1'}. Время прогулки: ${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,'0')}.`,'Пройти ещё раз');}
 function update(dt){
  t+=dt;noticeTime-=dt;const previousX=p.x;
- const dir=Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft'));
- step(p,{dir,jump,held:keys.has('Space'),onJump:()=>sound('jump'),onLand:()=>sound('land')},dt,platforms,wet);jump=false;advanceAnimation(animation,p,p.x-previousX);
+ const dir=Number(held('KeyD')||held('ArrowRight'))-Number(held('KeyA')||held('ArrowLeft'));
+ step(p,{dir,jump,held:held('Space'),onJump:()=>sound('jump'),onLand:()=>sound('land')},dt,platforms,wet);jump=false;advanceAnimation(animation,p,p.x-previousX);
  if(pickup){if(!p.grounded||Math.abs(p.x-pickup.x)>15||Math.abs(p.vx)>30)pickup=null;else{pickup.time+=dt;if(pickup.time>=.32&&!collected){collected=true;sound('hat');say('Кепка 1/1 — несём хозяину!');}if(pickup.time>=.65)pickup=null;}}
  if(p.y>850||inDangerousWater(p)){respawn();say(collected?'Кепка сохранена. Рома снова на тропе.':'Рома снова на тропе.');}
  if(!checked&&p.x>=checkpoint.x){checked=true;sound('flag');say('Контрольная точка сохранена');}
- if(p.x>=finish&&p.grounded){keys.clear();if(collected){mode='delivery';delivery=0;animation.mode='idle';}else win();}
+ if(p.x>=finish&&p.grounded){resetInput();if(collected){mode='delivery';delivery=0;animation.mode='idle';}else win();}
  cam+=(Math.max(0,Math.min(C.world-1280,p.x-400+p.vx*.55))-cam)*(1-Math.exp(-3*dt));
 }
 function text(s,x,y,size=24,color='#203e40'){g.fillStyle=color;g.font=`600 ${size}px Segoe UI`;g.fillText(s,x,y);}
@@ -56,6 +63,7 @@ function sign(x,s,y){const width=Math.max(250,s.length*12.5+24);rect(x,y+12,6,56
 function storyFrame(){return endingFrame(mode==='delivery'||(mode==='pause'&&resumeMode==='delivery'),delivery,delivered);}
 function drawOwner(){const image=storyFrame().ownerPose==='raised-cap'?ownerRaised:owner;const h=150,w=h*(image.naturalWidth||320)/(image.naturalHeight||480);g.fillStyle='#263b3540';g.beginPath();g.ellipse(16672,560,39,7,0,0,7);g.fill();g.drawImage(image,16672-w/2,560-h,w,h);}
 function draw(){
+ touchUI.sync({mode,canTake:mode==='play'&&p.grounded&&Math.abs(p.vx)<30&&nearHat(),progress:Math.floor(Math.min(100,p.x/finish*100)),collected});
  const alpha=photoPrepared?photoMix:0;if(alpha<.999)drawOriginalBackground(g,cam,t);
  if(alpha>0)drawPhotoBackdrop(g,photoPrepared,cam,alpha);
  g.save();g.translate(-cam,0);if(environment)drawEnvironment(g,platforms,photoPrepared,environment,cam,alpha);rect(wet.x,557,wet.end-wet.x,3,'#65b7be');
