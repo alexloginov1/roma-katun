@@ -1,2 +1,20 @@
-<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Рома. Тропа над Катунью</title><link rel="stylesheet" href="style.css"><body><main><header><span>АЛТАЙ · ОСЕННЯЯ ПРОГУЛКА</span><div class="settings"><button id="scenery" title="Сравнить оформление без сброса прогресса">Фотофон</button><button id="sound">Звук: вкл.</button></div></header><canvas id="game" width="1280" height="720" aria-label="Рома. Тропа над Катунью"></canvas><footer>A / D или ← → — идти · Пробел — прыгать · E — взять кепку · R — к флажку · Esc — пауза</footer><section id="overlay"><small>НЕБОЛЬШОЕ ПРИКЛЮЧЕНИЕ БОЛЬШОГО ПСА</small><h1>Рома.<br><em>Тропа над Катунью</em></h1><p id="message">Бирюзовая река, тёплые камни и хозяин, который ждёт у костра.<br>По пути можно отыскать его кепку.</p><button id="start" disabled>Загрузка Ромы…</button><p class="hint">Держите Пробел для высокого прыжка. Отпустите — для короткого.</p></section></main><script type="module" src="src/main.js"></script></body></html>
-
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Рома. Тропа над Катунью</title>
+<link rel="stylesheet" href="style.css">
+<body><main>
+<header><span class="brand">АЛТАЙ · ОСЕННЯЯ ПРОГУЛКА</span><span id="mobile-status" aria-label="Прогресс прогулки">0% пути · Кепка 0/1</span><div class="settings">
+<button id="pause" disabled aria-label="Пауза">Ⅱ Пауза</button>
+<details id="settings"><summary>Настройки</summary><div class="settings-panel"><button id="scenery" title="Сравнить оформление без сброса прогресса">Фотофон</button><button id="sound">Звук: вкл.</button><button id="touch-mode">Кнопки: авто</button></div></details>
+</div></header>
+<div class="stage"><canvas id="game" width="1280" height="720" aria-label="Рома. Тропа над Катунью"></canvas>
+<section id="overlay"><small>НЕБОЛЬШОЕ ПРИКЛЮЧЕНИЕ БОЛЬШОГО ПСА</small><h1>Рома.<br><em>Тропа над Катунью</em></h1><p id="message">Бирюзовая река, тёплые камни и хозяин, который ждёт у костра.<br>По пути можно отыскать его кепку.</p><div class="menu-actions"><button id="start" disabled>Загрузка Ромы…</button><button id="checkpoint" hidden>К контрольной точке</button></div><p class="hint">Прыжок: удерживайте для высокого, отпустите для короткого.</p></section></div>
+<div id="touch-controls" hidden aria-label="Сенсорное управление">
+<div class="directions"><button id="touch-left" aria-label="Идти влево" aria-pressed="false">◀</button><button id="touch-right" aria-label="Идти вправо" aria-pressed="false">▶</button></div>
+<div class="actions"><button id="touch-take" hidden aria-pressed="false">Взять</button><button id="touch-jump" aria-pressed="false">Прыжок</button></div>
+</div>
+<p class="rotate-note">Для удобной игры поверните телефон горизонтально ↻</p>
+<footer>A / D или ← → — идти · Пробел — прыгать · E — взять кепку · R — к флажку · Esc — пауза</footer>
+</main><script type="module" src="src/main.js"></script></body></html>
